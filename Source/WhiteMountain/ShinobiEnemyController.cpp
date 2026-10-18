@@ -99,8 +99,12 @@ void AShinobiEnemyController::Tick(float DeltaSeconds)
 		return;
 	}
 
-	StateTime += DeltaSeconds;
 	CatchTimer = FMath::Max(0.f, CatchTimer - DeltaSeconds);
+	if (GetEnemy()->IsStunned())
+	{
+		return;	// on the ground: no seeing, chasing or catching until he gets up
+	}
+	StateTime += DeltaSeconds;
 
 	switch (Alert)
 	{
@@ -109,6 +113,21 @@ void AShinobiEnemyController::Tick(float DeltaSeconds)
 	case EEnemyAlert::Search:     TickSearch(DeltaSeconds); break;
 	case EEnemyAlert::Frustrated: TickFrustrated(DeltaSeconds); break;
 	case EEnemyAlert::Return:     TickReturn(DeltaSeconds); break;
+	}
+}
+
+void AShinobiEnemyController::RaiseAlarm(const FVector& Location)
+{
+	LastSeenLocation = Location;
+	if (Alert != EEnemyAlert::Chase)
+	{
+		EnterState(EEnemyAlert::Chase);
+	}
+	LostSightTime = 0.f;
+	RepathTimer = 0.f;
+	if (GetEnemy() && GetEnemy()->IsStunned())
+	{
+		GetEnemy()->GetCharacterMovement()->MaxWalkSpeed = 0.f;	// Recover() restores the chase speed
 	}
 }
 

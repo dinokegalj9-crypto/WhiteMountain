@@ -70,6 +70,9 @@ public:
 	/** Short message on the HUD feed (no points). */
 	void PushMessage(const FString& Text);
 
+	/** Points for something other than a pursuer giving up (a trap, a completed escape route). */
+	void AwardBonus(int32 InPoints, const FString& Text);
+
 	UFUNCTION(BlueprintPure, Category = "Score")
 	int32 GetPoints() const { return Points; }
 

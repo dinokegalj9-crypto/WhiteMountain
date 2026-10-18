@@ -12,7 +12,11 @@ UE5 C++ prototype of shinobi traversal and escape scoring. Untested: written wit
 | `EscapeScoreComponent` | escape points, chain multiplier, move unlocks |
 | `ShinobiTrainer` | village master (Traversal / Weapons / Herbs) that sells moves |
 | `ShinobiEnemy` / `ShinobiEnemyController` | guard types and Patrol → Chase → Frustrated/Search → Return; gives up when the navmesh has no (or an absurd) route |
+| `ShinobiInteractable` | base for things used with E; the closest usable one wins |
+| `ShinobiEscapeRoute` | ordered checkpoints; calm runs are rehearsals (max 3), chased runs pay a bonus scaled by rehearsals |
+| `ShinobiOilTrap` / `ShinobiDropLog` | escape traps: oil that knocks chasing guards down; a log ramp pushed down from the roof, which removes the guards' navmesh route |
+| `ShinobiAlarmObjective` | item to steal; raises the alarm for nearby guards |
 | `ShinobiHUD` | Canvas HUD, no UMG needed |
-| `TraversalTestCourse` | grey-box course with 7 stations, guards, ropes and a master |
+| `TraversalTestCourse` | grey-box course with 8 stations (7 = town escape), guards, ropes and a master |
 
 Tags: `Climbable` on an actor or component makes a wall climbable; `NoClimb` forbids climbing and ledge grabs.

@@ -4,6 +4,7 @@
 #include "ShinobiTraversalComponent.h"
 #include "EscapeScoreComponent.h"
 #include "ShinobiTrainer.h"
+#include "ShinobiInteractable.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -304,6 +305,27 @@ void AShinobiCharacter::InteractPressed()
 {
 	if (bStunned || Traversal->HandleInteractPressed())
 	{
+		return;
+	}
+
+	// Closest usable thing in reach: oil jar, log, ledger...
+	AShinobiInteractable* Best = nullptr;
+	float BestDistance = TNumericLimits<float>::Max();
+	for (TActorIterator<AShinobiInteractable> It(GetWorld()); It; ++It)
+	{
+		if (It->CanInteract(this))
+		{
+			const float Distance = FVector::Dist(GetActorLocation(), It->GetInteractLocation());
+			if (Distance < BestDistance)
+			{
+				Best = *It;
+				BestDistance = Distance;
+			}
+		}
+	}
+	if (Best)
+	{
+		Best->Interact(this);
 		return;
 	}
 

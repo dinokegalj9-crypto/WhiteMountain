@@ -174,6 +174,13 @@ void UEscapeScoreComponent::PushMessage(const FString& Text)
 	AddEvent(0, Text);
 }
 
+void UEscapeScoreComponent::AwardBonus(int32 InPoints, const FString& Text)
+{
+	Points += InPoints;
+	LifetimePoints += InPoints;
+	AddEvent(InPoints, Text);
+}
+
 void UEscapeScoreComponent::AddEvent(int32 InPoints, const FString& Text)
 {
 	FEscapeScoreEvent Event;
