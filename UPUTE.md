@@ -17,7 +17,7 @@ Ovo je prvi kod za igru: lik shinobija koji se penje, skače, visi na rubu, penj
 ## 2. Otvaranje projekta
 
 1. Skini cijelu mapu `white-mountain` na svoj PC, npr. u `C:\Igre\WhiteMountain`. Izbjegavaj jako duge putanje.
-2. Desni klik na `WhiteMountain.uproject` → **Switch Unreal Engine version** → odaberi verziju koju imaš (u datoteci piše 5.6).
+2. Desni klik na `WhiteMountain.uproject` → **Switch Unreal Engine version** → odaberi verziju koju imaš (u datoteci piše 5.8).
 3. Opet desni klik na `WhiteMountain.uproject` → **Generate Visual Studio project files**.
 4. Dvoklik na `WhiteMountain.uproject`. Pitat će *"The following modules are missing or built with a different engine version... Would you like to rebuild them now?"* → **Yes**. Build traje nekoliko minuta.
 5. Ako javi da build nije uspio: otvori `WhiteMountain.sln` u Visual Studiju, gore odaberi **Development Editor** i **Win64**, pa *Build → Build Solution*. Iz prozora **Output** kopiraj prve greške (redove s `error`) i pošalji ih meni.
