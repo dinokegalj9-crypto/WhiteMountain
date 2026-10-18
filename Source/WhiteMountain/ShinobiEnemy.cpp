@@ -123,7 +123,7 @@ bool AShinobiEnemy::Slip(float Duration)
 	PlaceholderFace->SetVisibility(false);
 	GetMesh()->SetRelativeRotation(MeshRotationBeforeSlip + FRotator(0.f, 0.f, 75.f));
 
-	GetWorldTimerManager().SetTimer(RecoverTimer, this, &AShinobiEnemy::Recover, Duration, false);
+	GetWorldTimerManager().SetTimer(RecoverTimer, this, &AShinobiEnemy::Recover, FMath::Max(Duration, 0.1f), false);
 	return true;
 }
 
@@ -133,5 +133,11 @@ void AShinobiEnemy::Recover()
 	PlaceholderBody->SetRelativeRotation(BodyRotationBeforeSlip);
 	PlaceholderFace->SetVisibility(PlaceholderBody->IsVisible());
 	GetMesh()->SetRelativeRotation(MeshRotationBeforeSlip);
-	GetCharacterMovement()->MaxWalkSpeed = GetAlert() == EEnemyAlert::Patrol || GetAlert() == EEnemyAlert::Return ? PatrolSpeed : ChaseSpeed;
+	// Same speeds as AShinobiEnemyController::EnterState.
+	switch (GetAlert())
+	{
+	case EEnemyAlert::Chase:  GetCharacterMovement()->MaxWalkSpeed = ChaseSpeed; break;
+	case EEnemyAlert::Search: GetCharacterMovement()->MaxWalkSpeed = PatrolSpeed * 1.5f; break;
+	default:                  GetCharacterMovement()->MaxWalkSpeed = PatrolSpeed; break;
+	}
 }

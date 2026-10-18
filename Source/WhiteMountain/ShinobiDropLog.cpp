@@ -72,8 +72,9 @@ FTransform AShinobiDropLog::GetFlatTransform() const
 	const float Length = Slope + 2.f * LogOverhang;
 	const FVector Dir(Flat.X / Run, Flat.Y / Run, 0.f);
 
-	// Lying on the ground, its far end just short of the wall it leaned on.
-	const FVector Center = Dir * (Run - 20.f - Length * 0.5f) + FVector(0.f, 0.f, Thickness * 0.5f);
+	// Lying on the ground beside where it stood (so it does not cover the path), its far end just short of the wall.
+	const FVector Side(Dir.Y, -Dir.X, 0.f);
+	const FVector Center = Dir * (Run - 20.f - Length * 0.5f) + Side * (Width + 100.f) + FVector(0.f, 0.f, Thickness * 0.5f);
 	const FRotator Rotation(0.f, FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X)), 0.f);
 	return FTransform(Rotation, Center, FVector(Length / 100.f, Width / 100.f, Thickness / 100.f));
 }
