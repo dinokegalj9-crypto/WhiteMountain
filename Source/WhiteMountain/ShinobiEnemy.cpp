@@ -1,6 +1,8 @@
 #include "ShinobiEnemy.h"
 #include "ShinobiEnemyController.h"
 #include "ShinobiVisuals.h"
+#include "EscapeScoreComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
@@ -121,29 +123,145 @@ bool AShinobiEnemy::Slip(float Duration)
 	}
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->MaxWalkSpeed = 0.f;
-
-	// Grey-box "fall": tip the visible body over. The capsule stays upright.
-	BodyRotationBeforeSlip = PlaceholderBody->GetRelativeRotation();
-	MeshRotationBeforeSlip = GetMesh()->GetRelativeRotation();
-	PlaceholderBody->SetRelativeRotation(BodyRotationBeforeSlip + FRotator(0.f, 0.f, 75.f));
-	PlaceholderFace->SetVisibility(false);
-	GetMesh()->SetRelativeRotation(MeshRotationBeforeSlip + FRotator(0.f, 0.f, 75.f));
+	FallOver(75.f);
 
 	GetWorldTimerManager().SetTimer(RecoverTimer, this, &AShinobiEnemy::Recover, FMath::Max(Duration, 0.1f), false);
 	return true;
 }
 
+void AShinobiEnemy::FallOver(float Roll)
+{
+	if (!bFallen)
+	{
+		BodyRotationBeforeSlip = PlaceholderBody->GetRelativeRotation();
+		MeshRotationBeforeSlip = GetMesh()->GetRelativeRotation();
+		bFallen = true;
+	}
+	PlaceholderBody->SetRelativeRotation(BodyRotationBeforeSlip + FRotator(0.f, 0.f, Roll));
+	PlaceholderFace->SetVisibility(false);
+	GetMesh()->SetRelativeRotation(MeshRotationBeforeSlip + FRotator(0.f, 0.f, Roll));
+}
+
 void AShinobiEnemy::Recover()
 {
+	const bool bWasUnconscious = bUnconscious;
 	bStunned = false;
-	PlaceholderBody->SetRelativeRotation(BodyRotationBeforeSlip);
-	PlaceholderFace->SetVisibility(PlaceholderBody->IsVisible());
-	GetMesh()->SetRelativeRotation(MeshRotationBeforeSlip);
+	bHeld = false;
+	bUnconscious = false;
+	bBodyFound = false;
+	RestorePawnBlock();
+	if (bFallen)
+	{
+		bFallen = false;
+		PlaceholderBody->SetRelativeRotation(BodyRotationBeforeSlip);
+		PlaceholderFace->SetVisibility(PlaceholderBody->IsVisible());
+		GetMesh()->SetRelativeRotation(MeshRotationBeforeSlip);
+	}
 	// Same speeds as AShinobiEnemyController::EnterState.
 	switch (GetAlert())
 	{
 	case EEnemyAlert::Chase:  GetCharacterMovement()->MaxWalkSpeed = ChaseSpeed; break;
 	case EEnemyAlert::Search: GetCharacterMovement()->MaxWalkSpeed = PatrolSpeed * 1.5f; break;
 	default:                  GetCharacterMovement()->MaxWalkSpeed = PatrolSpeed; break;
+	}
+
+	if (bWasUnconscious)
+	{
+		// He comes to with a sore neck and looks around for whoever did it.
+		if (AShinobiEnemyController* AI = Cast<AShinobiEnemyController>(GetController()))
+		{
+			AI->Investigate(GetActorLocation(), true);
+		}
+	}
+}
+
+void AShinobiEnemy::RestorePawnBlock()
+{
+	// Do not stand up inside the shinobi if he is standing over the body: wait until he steps off.
+	const APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0);
+	if (Player && FVector::Dist2D(Player->GetActorLocation(), GetActorLocation()) < 100.f)
+	{
+		GetWorldTimerManager().SetTimer(BlockTimer, this, &AShinobiEnemy::RestorePawnBlock, 0.3f, false);
+		return;
+	}
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+}
+
+// ---------------------------------------------------------------------------
+// Takedowns
+// ---------------------------------------------------------------------------
+
+bool AShinobiEnemy::CanBeTakenDown(const FVector& ShinobiLocation) const
+{
+	if (bUnconscious || bHeld)
+	{
+		return false;
+	}
+	const FVector Delta = ShinobiLocation - GetActorLocation();
+	if (Delta.Size2D() > TakedownRange || FMath::Abs(Delta.Z) > 80.f)
+	{
+		return false;
+	}
+	if (bStunned)
+	{
+		return true;	// slipped on oil or knocked down by the log: finish him from any side
+	}
+
+	// A guard who is hunting or searching watches his back.
+	const EEnemyAlert Alert = GetAlert();
+	if (Alert == EEnemyAlert::Chase || Alert == EEnemyAlert::Frustrated || Alert == EEnemyAlert::Search)
+	{
+		return false;
+	}
+	const FVector Behind = -GetActorForwardVector().GetSafeNormal2D();
+	const float CosAngle = FVector::DotProduct(Behind, Delta.GetSafeNormal2D());
+	return CosAngle >= FMath::Cos(FMath::DegreesToRadians(TakedownBehindAngle));
+}
+
+void AShinobiEnemy::BeginTakedown()
+{
+	GetWorldTimerManager().ClearTimer(RecoverTimer);	// a slipped guard does not get up mid-takedown
+	bStunned = true;
+	bHeld = true;
+	if (AController* AI = GetController())
+	{
+		AI->StopMovement();
+	}
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->MaxWalkSpeed = 0.f;
+}
+
+void AShinobiEnemy::FinishTakedown(float Seconds)
+{
+	bHeld = false;
+	bUnconscious = true;
+	bBodyFound = false;
+	FallOver(90.f);
+	// Lying flat: the shinobi can step over him.
+	GetWorldTimerManager().ClearTimer(BlockTimer);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
+	// He is out of the hunt: no escape points for him, but no pursuer either.
+	if (const APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0))
+	{
+		if (UEscapeScoreComponent* Score = Player->FindComponentByClass<UEscapeScoreComponent>())
+		{
+			Score->ReportPursuerGone(this);
+		}
+	}
+	GetWorldTimerManager().SetTimer(RecoverTimer, this, &AShinobiEnemy::Recover, FMath::Max(Seconds, 0.1f), false);
+}
+
+void AShinobiEnemy::BreakTakedown(const FVector& ShinobiLocation)
+{
+	if (!bHeld)
+	{
+		return;
+	}
+	GetWorldTimerManager().ClearTimer(RecoverTimer);
+	Recover();
+	if (AShinobiEnemyController* AI = Cast<AShinobiEnemyController>(GetController()))
+	{
+		AI->RaiseAlarm(ShinobiLocation);
 	}
 }

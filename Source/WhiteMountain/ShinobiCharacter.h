@@ -11,6 +11,7 @@ class UInputAction;
 class UInputMappingContext;
 class UShinobiTraversalComponent;
 class UEscapeScoreComponent;
+class AShinobiEnemy;
 struct FInputActionValue;
 
 /**
@@ -42,6 +43,42 @@ public:
 	void ReceiveArrowHit(const FVector& FromLocation);
 
 	bool IsWounded() const;
+
+	// --- Takedowns: E = Silent Sleep (slow, silent), F = Pressure Strike (fast, he groans) ---
+	/** The guard the shinobi could take down right now, or null. */
+	AShinobiEnemy* FindTakedownTarget() const;
+
+	bool IsInTakedown() const { return bInTakedown; }
+
+	/** 0..1 while a takedown is under way. */
+	float GetTakedownProgress() const;
+
+	/** In-game name of the takedown under way. */
+	const TCHAR* GetTakedownName() const;
+
+	/** Hadaka jime (rear choke). Slow and completely silent. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Takedown")
+	float SilentSleepSeconds = 4.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Takedown")
+	float SilentSleepKnockoutSeconds = 60.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Takedown")
+	int32 SilentSleepPoints = 40;
+
+	/** Shikan ken into Dokko (behind the ear). Quick, but he groans and nearby guards hear it. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Takedown")
+	float PressureStrikeSeconds = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Takedown")
+	float PressureStrikeKnockoutSeconds = 30.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Takedown")
+	int32 PressureStrikePoints = 20;
+
+	/** Guards this close hear the groan and come to look. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Takedown")
+	float PressureStrikeNoiseRadius = 900.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Arrows")
 	float ArrowSlowSeconds = 2.5f;
@@ -103,6 +140,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Shinobi|Input")
 	TObjectPtr<UInputAction> KaginawaAction;
 
+	UPROPERTY(EditAnywhere, Category = "Shinobi|Input")
+	TObjectPtr<UInputAction> StrikeAction;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Shinobi")
 	TObjectPtr<USpringArmComponent> CameraBoom;
@@ -137,6 +177,16 @@ private:
 	void InteractPressed();
 	void RopeLadderPressed();
 	void KaginawaPressed();
+	void StrikePressed();
+
+	/** Stunned or busy with a takedown: no other input. */
+	bool IsBusy() const { return bStunned || IsInTakedown(); }
+
+	void StartTakedown(AShinobiEnemy* Target, bool bSilent);
+	void TickTakedown(float DeltaSeconds);
+	void CompleteTakedown();
+	/** Let go before the end (caught, shot, fell): the guard tears free and raises the alarm. */
+	void CancelTakedown();
 
 	void Stun(float Seconds, const FString& Reason);
 	void EndStun();
@@ -147,4 +197,9 @@ private:
 	float FallApexZ = 0.f;
 	float LastDropPressTime = -1000.f;
 	FTimerHandle StunTimer;
+
+	TWeakObjectPtr<AShinobiEnemy> TakedownTarget;
+	bool bInTakedown = false;
+	bool bTakedownSilent = true;
+	float TakedownTime = 0.f;
 };

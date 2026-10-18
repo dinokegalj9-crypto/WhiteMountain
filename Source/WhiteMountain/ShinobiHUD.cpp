@@ -16,6 +16,7 @@ namespace
 		TEXT("Space jump / climb a marked wall / vault / wall jump"),
 		TEXT("E rope, tightrope, master, oil jar, push log, steal   Q kaginawa (look at an anchor)"),
 		TEXT("R rope ladder at an edge (R again at the top = untie)"),
+		TEXT("Behind a calm guard: E Silent Sleep (slow, silent)   F Pressure Strike (fast, he groans)"),
 	};
 }
 
@@ -60,6 +61,22 @@ void AShinobiHUD::DrawHUD()
 		const float Marker = BX + W * 0.5f * (1.f + FMath::Clamp(Traversal->GetBalance(), -1.f, 1.f));
 		DrawRect(FLinearColor::White, Marker - 3.f, BY - 4.f, 6.f, 22.f);
 		DrawText(TEXT("BALANCE (A / D)"), FLinearColor::White, BX + 90.f, BY - 24.f, SmallFont);
+	}
+
+	// Takedown: progress bar while holding, otherwise a hint when one is possible.
+	{
+		const float W = 300.f;
+		const float BX = Canvas->ClipX * 0.5f - W * 0.5f;
+		const float BY = Canvas->ClipY * 0.62f;
+		if (Shinobi->IsInTakedown())
+		{
+			DrawText(Shinobi->GetTakedownName(), FLinearColor::White, BX, BY - 24.f, SmallFont);
+			DrawBar(BX, BY, W, 14.f, Shinobi->GetTakedownProgress(), FLinearColor(0.6f, 0.75f, 1.f));
+		}
+		else if (Shinobi->FindTakedownTarget())
+		{
+			DrawText(TEXT("[E] Silent Sleep    [F] Pressure Strike"), FLinearColor(0.75f, 0.85f, 1.f), BX, BY, SmallFont);
+		}
 	}
 
 	// Event feed, newest last, fading out.
@@ -119,6 +136,11 @@ void AShinobiHUD::DrawGuardMarkers()
 		case EEnemyAlert::Search:     Symbol = TEXT("?");   Color = FLinearColor(1.f, 0.8f, 0.1f); break;
 		case EEnemyAlert::Frustrated: Symbol = TEXT("...");  Color = FLinearColor(0.6f, 0.6f, 1.f); break;
 		default: break;
+		}
+		if (It->IsUnconscious())
+		{
+			Symbol = TEXT("zzz");
+			Color = It->bBodyFound ? FLinearColor(1.f, 0.8f, 0.1f) : FLinearColor(0.6f, 0.6f, 0.6f);
 		}
 		if (It->IsAiming())
 		{

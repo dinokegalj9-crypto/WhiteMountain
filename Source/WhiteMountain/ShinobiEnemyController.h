@@ -39,6 +39,13 @@ public:
 	/** Someone shouted: run to Location and start chasing, even without seeing the shinobi. */
 	void RaiseAlarm(const FVector& Location);
 
+	/**
+	 * Something odd here (a groan, a body, waking up on the ground): walk over and search.
+	 * Ignored while chasing, unless bEvenIfChasing (he woke up and has no idea where you went).
+	 * Ending this search gives no escape points: nobody was chasing you.
+	 */
+	void Investigate(const FVector& Location, bool bEvenIfChasing = false);
+
 	bool IsAiming() const { return bAiming; }
 
 	/**
@@ -83,6 +90,8 @@ private:
 	void TickReturn(float DeltaSeconds);
 
 	bool CanSeePlayer() const;
+	/** A calm guard who sees a comrade lying unconscious goes to look. Returns true if he found one. */
+	bool CheckForBodies();
 	FShinobiRouteCheck CheckRoute(const APawn* Target) const;
 	bool IsIdle() const;
 	void MoveToRandomPointNear(const FVector& Center, float Radius);
@@ -108,6 +117,8 @@ private:
 	float RepathTimer = 0.f;
 	float WaitTimer = 0.f;
 	float CatchTimer = 0.f;
+	bool bInvestigating = false;	// searching because of a noise or a body, not a lost chase
+	float BodyCheckTimer = 0.f;
 	bool bAiming = false;
 	float AimTimer = 0.f;
 	float ShotTimer = 0.f;
