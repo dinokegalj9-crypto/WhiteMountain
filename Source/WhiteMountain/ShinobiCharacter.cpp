@@ -5,6 +5,8 @@
 #include "EscapeScoreComponent.h"
 #include "ShinobiTrainer.h"
 #include "ShinobiInteractable.h"
+#include "ShinobiEnemy.h"
+#include "ShinobiEnemyController.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
@@ -98,6 +100,8 @@ void AShinobiCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 
+	TickTakedown(DeltaSeconds);
+
 	UCharacterMovementComponent* MoveComp = GetCharacterMovement();
 	if (MoveComp->IsFalling())
 	{
@@ -133,6 +137,7 @@ void AShinobiCharacter::CreateFallbackInput()
 	MakeAction(InteractAction, TEXT("IA_Interact"), EInputActionValueType::Boolean);
 	MakeAction(RopeLadderAction, TEXT("IA_RopeLadder"), EInputActionValueType::Boolean);
 	MakeAction(KaginawaAction, TEXT("IA_Kaginawa"), EInputActionValueType::Boolean);
+	MakeAction(StrikeAction, TEXT("IA_Strike"), EInputActionValueType::Boolean);
 
 	if (DefaultMappingContext)
 	{
@@ -185,6 +190,8 @@ void AShinobiCharacter::CreateFallbackInput()
 	Context->MapKey(RopeLadderAction, EKeys::Gamepad_FaceButton_Top);
 	Context->MapKey(KaginawaAction, EKeys::Q);
 	Context->MapKey(KaginawaAction, EKeys::Gamepad_RightShoulder);
+	Context->MapKey(StrikeAction, EKeys::F);
+	Context->MapKey(StrikeAction, EKeys::Gamepad_LeftShoulder);
 
 	DefaultMappingContext = Context;
 }
@@ -221,6 +228,7 @@ void AShinobiCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCo
 	Input->BindAction(InteractAction, ETriggerEvent::Started, this, &AShinobiCharacter::InteractPressed);
 	Input->BindAction(RopeLadderAction, ETriggerEvent::Started, this, &AShinobiCharacter::RopeLadderPressed);
 	Input->BindAction(KaginawaAction, ETriggerEvent::Started, this, &AShinobiCharacter::KaginawaPressed);
+	Input->BindAction(StrikeAction, ETriggerEvent::Started, this, &AShinobiCharacter::StrikePressed);
 }
 
 void AShinobiCharacter::Move(const FInputActionValue& Value)
@@ -228,7 +236,7 @@ void AShinobiCharacter::Move(const FInputActionValue& Value)
 	const FVector2D Input = Value.Get<FVector2D>();
 	Traversal->SetMoveInput(Input);
 
-	if (bStunned || Traversal->IsTraversing() || !Controller)
+	if (IsBusy() || Traversal->IsTraversing() || !Controller)
 	{
 		return;	// traversal moves the body itself
 	}
@@ -251,7 +259,7 @@ void AShinobiCharacter::Look(const FInputActionValue& Value)
 
 void AShinobiCharacter::JumpPressed()
 {
-	if (bStunned || Traversal->HandleJumpPressed())
+	if (IsBusy() || Traversal->HandleJumpPressed())
 	{
 		return;
 	}
@@ -284,7 +292,7 @@ void AShinobiCharacter::SprintReleased()
 void AShinobiCharacter::DropPressed()
 {
 	LastDropPressTime = GetWorld()->GetTimeSeconds();	// also the ukemi timing
-	if (bStunned || Traversal->HandleDropPressed())
+	if (IsBusy() || Traversal->HandleDropPressed())
 	{
 		return;
 	}
@@ -303,8 +311,15 @@ void AShinobiCharacter::DropPressed()
 
 void AShinobiCharacter::InteractPressed()
 {
-	if (bStunned || Traversal->HandleInteractPressed())
+	if (IsBusy() || Traversal->HandleInteractPressed())
 	{
+		return;
+	}
+
+	// A calm guard with his back to you comes first: Silent Sleep.
+	if (AShinobiEnemy* Target = FindTakedownTarget())
+	{
+		StartTakedown(Target, true);
 		return;
 	}
 
@@ -342,7 +357,7 @@ void AShinobiCharacter::InteractPressed()
 
 void AShinobiCharacter::RopeLadderPressed()
 {
-	if (!bStunned)
+	if (!IsBusy())
 	{
 		Traversal->HandleRopeLadderPressed();
 	}
@@ -350,9 +365,143 @@ void AShinobiCharacter::RopeLadderPressed()
 
 void AShinobiCharacter::KaginawaPressed()
 {
-	if (!bStunned)
+	if (!IsBusy())
 	{
 		Traversal->HandleKaginawaPressed();
+	}
+}
+
+void AShinobiCharacter::StrikePressed()
+{
+	if (IsBusy())
+	{
+		return;
+	}
+	if (AShinobiEnemy* Target = FindTakedownTarget())
+	{
+		StartTakedown(Target, false);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Takedowns
+// ---------------------------------------------------------------------------
+
+AShinobiEnemy* AShinobiCharacter::FindTakedownTarget() const
+{
+	if (IsBusy() || Traversal->IsTraversing() || !GetCharacterMovement()->IsMovingOnGround())
+	{
+		return nullptr;
+	}
+	AShinobiEnemy* Best = nullptr;
+	float BestDistance = TNumericLimits<float>::Max();
+	for (TActorIterator<AShinobiEnemy> It(GetWorld()); It; ++It)
+	{
+		if (It->CanBeTakenDown(GetActorLocation()))
+		{
+			const float Distance = FVector::Dist(GetActorLocation(), It->GetActorLocation());
+			if (Distance < BestDistance)
+			{
+				Best = *It;
+				BestDistance = Distance;
+			}
+		}
+	}
+	return Best;
+}
+
+float AShinobiCharacter::GetTakedownProgress() const
+{
+	const float Duration = bTakedownSilent ? SilentSleepSeconds : PressureStrikeSeconds;
+	return IsInTakedown() ? FMath::Clamp(TakedownTime / FMath::Max(Duration, 0.1f), 0.f, 1.f) : 0.f;
+}
+
+const TCHAR* AShinobiCharacter::GetTakedownName() const
+{
+	return bTakedownSilent ? TEXT("Silent Sleep") : TEXT("Pressure Strike");
+}
+
+void AShinobiCharacter::StartTakedown(AShinobiEnemy* Target, bool bSilent)
+{
+	TakedownTarget = Target;
+	bInTakedown = true;
+	bTakedownSilent = bSilent;
+	TakedownTime = 0.f;
+	if (bIsCrouched)
+	{
+		UnCrouch();
+	}
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->DisableMovement();
+
+	const FVector ToTarget = (Target->GetActorLocation() - GetActorLocation()).GetSafeNormal2D();
+	if (!ToTarget.IsNearlyZero())
+	{
+		SetActorRotation(ToTarget.Rotation());
+	}
+	Target->BeginTakedown();
+}
+
+void AShinobiCharacter::TickTakedown(float DeltaSeconds)
+{
+	if (!IsInTakedown())
+	{
+		return;
+	}
+	TakedownTime += DeltaSeconds;
+	if (TakedownTime >= (bTakedownSilent ? SilentSleepSeconds : PressureStrikeSeconds))
+	{
+		CompleteTakedown();
+	}
+}
+
+void AShinobiCharacter::CompleteTakedown()
+{
+	AShinobiEnemy* Target = TakedownTarget.Get();
+	TakedownTarget.Reset();
+	bInTakedown = false;
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	if (!Target)
+	{
+		return;
+	}
+
+	Target->FinishTakedown(bTakedownSilent ? SilentSleepKnockoutSeconds : PressureStrikeKnockoutSeconds);
+	if (bTakedownSilent)
+	{
+		EscapeScore->AwardBonus(SilentSleepPoints, TEXT("Silent Sleep: not a sound"));
+		return;
+	}
+
+	EscapeScore->AwardBonus(PressureStrikePoints, TEXT("Pressure Strike: he groans as he drops"));
+	// The groan carries: guards close by come to look.
+	for (TActorIterator<AShinobiEnemy> It(GetWorld()); It; ++It)
+	{
+		if (*It != Target && !It->IsStunned()
+			&& FVector::Dist(It->GetActorLocation(), Target->GetActorLocation()) < PressureStrikeNoiseRadius)
+		{
+			if (AShinobiEnemyController* AI = Cast<AShinobiEnemyController>(It->GetController()))
+			{
+				AI->Investigate(Target->GetActorLocation());
+			}
+		}
+	}
+}
+
+void AShinobiCharacter::CancelTakedown()
+{
+	AShinobiEnemy* Target = TakedownTarget.Get();
+	if (!IsInTakedown())
+	{
+		return;
+	}
+	TakedownTarget.Reset();
+	bInTakedown = false;
+	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	if (Target)
+	{
+		Target->BreakTakedown(GetActorLocation());
+		EscapeScore->PushMessage(TEXT("You lost your grip: he tears free!"));
 	}
 }
 
@@ -394,12 +543,14 @@ void AShinobiCharacter::Landed(const FHitResult& Hit)
 
 void AShinobiCharacter::ReceiveCatch(const FVector& FromLocation)
 {
+	CancelTakedown();
 	const FVector Away = (GetActorLocation() - FromLocation).GetSafeNormal2D();
 	LaunchCharacter(Away * 500.f + FVector(0.f, 0.f, 250.f), true, true);
 }
 
 void AShinobiCharacter::ReceiveArrowHit(const FVector& FromLocation)
 {
+	CancelTakedown();
 	WoundedUntil = GetWorld()->GetTimeSeconds() + ArrowSlowSeconds;
 	EscapeScore->AwardBonus(-ArrowHitPenalty, TEXT("Hit by an arrow!"));
 
@@ -418,6 +569,7 @@ bool AShinobiCharacter::IsWounded() const
 
 void AShinobiCharacter::Stun(float Seconds, const FString& Reason)
 {
+	CancelTakedown();
 	bStunned = true;
 	GetCharacterMovement()->DisableMovement();
 	EscapeScore->PushMessage(Reason);

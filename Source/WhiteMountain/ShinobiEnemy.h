@@ -31,6 +31,39 @@ public:
 
 	bool IsStunned() const { return bStunned; }
 
+	// --- Takedowns (the shinobi's quiet moves) ---
+	/** Out cold after a takedown. Lies still until he wakes up, then searches around him. */
+	bool IsUnconscious() const { return bUnconscious; }
+
+	/** Held in a takedown right now. */
+	bool IsHeld() const { return bHeld; }
+
+	/**
+	 * Can the shinobi standing at ShinobiLocation take him down?
+	 * From behind while he is calm, or from any side while he lies slipped on the ground.
+	 */
+	bool CanBeTakenDown(const FVector& ShinobiLocation) const;
+
+	/** The shinobi grabs him: he stops dead and cannot see or shout. */
+	void BeginTakedown();
+
+	/** The takedown worked: he drops and stays out for Seconds. */
+	void FinishTakedown(float Seconds);
+
+	/** The shinobi had to let go (caught, shot): he tears free and chases at once. */
+	void BreakTakedown(const FVector& ShinobiLocation);
+
+	/** Another guard already found him lying here (so it does not raise the alarm twice). */
+	bool bBodyFound = false;
+
+	/** The shinobi can take him down from this close. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard|Takedown")
+	float TakedownRange = 160.f;
+
+	/** "Behind" means within this many degrees of straight behind his back. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard|Takedown")
+	float TakedownBehindAngle = 70.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard")
 	EGuardType GuardType = EGuardType::Spearman;
 
@@ -102,9 +135,17 @@ protected:
 
 private:
 	void Recover();
+	/** Grey-box fall: tip the visible body over by Roll degrees (the capsule stays upright). */
+	void FallOver(float Roll);
+	/** Pawns bump into him again once nobody stands where he lies. */
+	void RestorePawnBlock();
 
 	bool bStunned = false;
+	bool bFallen = false;
+	bool bUnconscious = false;
+	bool bHeld = false;
 	FRotator BodyRotationBeforeSlip = FRotator::ZeroRotator;
 	FRotator MeshRotationBeforeSlip = FRotator::ZeroRotator;
 	FTimerHandle RecoverTimer;
+	FTimerHandle BlockTimer;
 };

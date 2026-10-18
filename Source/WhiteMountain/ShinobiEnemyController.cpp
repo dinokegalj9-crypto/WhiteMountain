@@ -8,6 +8,7 @@
 #include "ShinobiTraversalComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationPath.h"
@@ -59,6 +60,10 @@ void AShinobiEnemyController::EnterState(EEnemyAlert NewState)
 
 	Alert = NewState;
 	StateTime = 0.f;
+	if (NewState != EEnemyAlert::Search)
+	{
+		bInvestigating = false;
+	}
 
 	switch (NewState)
 	{
@@ -124,6 +129,10 @@ void AShinobiEnemyController::Tick(float DeltaSeconds)
 
 void AShinobiEnemyController::RaiseAlarm(const FVector& Location)
 {
+	if (GetEnemy() && GetEnemy()->IsUnconscious())
+	{
+		return;	// out cold: he hears nothing
+	}
 	LastSeenLocation = Location;
 	if (Alert != EEnemyAlert::Chase)
 	{
@@ -137,6 +146,63 @@ void AShinobiEnemyController::RaiseAlarm(const FVector& Location)
 	}
 }
 
+void AShinobiEnemyController::Investigate(const FVector& Location, bool bEvenIfChasing)
+{
+	if (!bEvenIfChasing && (Alert == EEnemyAlert::Chase || Alert == EEnemyAlert::Frustrated))
+	{
+		return;
+	}
+	// Still hunting a lost shinobi? Then this stays a real search and still pays escape points.
+	const bool bWasHunting = Alert == EEnemyAlert::Search && !bInvestigating;
+	LastSeenLocation = Location;
+	EnterState(EEnemyAlert::Search);
+	bInvestigating = bEvenIfChasing || !bWasHunting;
+	if (GetEnemy() && GetEnemy()->IsStunned())
+	{
+		GetEnemy()->GetCharacterMovement()->MaxWalkSpeed = 0.f;	// Recover() restores the search speed
+	}
+}
+
+bool AShinobiEnemyController::CheckForBodies()
+{
+	BodyCheckTimer -= GetWorld()->GetDeltaSeconds();
+	if (BodyCheckTimer > 0.f)
+	{
+		return false;
+	}
+	BodyCheckTimer = 0.25f;
+
+	const AShinobiEnemy* Me = GetEnemy();
+	for (TActorIterator<AShinobiEnemy> It(GetWorld()); It; ++It)
+	{
+		AShinobiEnemy* Other = *It;
+		if (Other == Me || !Other->IsUnconscious() || Other->bBodyFound)
+		{
+			continue;
+		}
+		const FVector ToBody = Other->GetActorLocation() - Me->GetActorLocation();
+		const float Distance = ToBody.Size();
+		if (Distance > Me->SightRange * 0.6f || Distance < KINDA_SMALL_NUMBER)
+		{
+			continue;
+		}
+		const float CosAngle = FVector::DotProduct(Me->GetActorForwardVector(), ToBody / Distance);
+		if (CosAngle < FMath::Cos(FMath::DegreesToRadians(Me->SightHalfAngle)) || !LineOfSightTo(Other))
+		{
+			continue;
+		}
+
+		Other->bBodyFound = true;
+		Investigate(Other->GetActorLocation());
+		if (UEscapeScoreComponent* Score = GetPlayerScore())
+		{
+			Score->PushMessage(TEXT("A guard found an unconscious body!"));
+		}
+		return true;
+	}
+	return false;
+}
+
 // ---------------------------------------------------------------------------
 
 void AShinobiEnemyController::TickPatrol(float DeltaSeconds)
@@ -145,6 +211,10 @@ void AShinobiEnemyController::TickPatrol(float DeltaSeconds)
 	{
 		LastSeenLocation = GetPlayer()->GetActorLocation();
 		EnterState(EEnemyAlert::Chase);
+		return;
+	}
+	if (CheckForBodies())
+	{
 		return;
 	}
 	if (IsIdle())
@@ -245,9 +315,10 @@ void AShinobiEnemyController::TickSearch(float DeltaSeconds)
 	{
 		MoveToRandomPointNear(LastSeenLocation, 500.f);
 	}
-	if (StateTime >= GetEnemy()->SearchDuration)
+	if (StateTime >= GetEnemy()->SearchDuration * (bInvestigating ? 1.5f : 1.f))
 	{
-		if (UEscapeScoreComponent* Score = GetPlayerScore())
+		UEscapeScoreComponent* Score = GetPlayerScore();
+		if (Score && !bInvestigating)
 		{
 			Score->ReportEscape(GetEnemy(), EEscapeReason::LostTrail, GetEnemy()->EscapePointMultiplier);
 		}
@@ -295,6 +366,10 @@ void AShinobiEnemyController::TickReturn(float DeltaSeconds)
 	{
 		LastSeenLocation = GetPlayer()->GetActorLocation();
 		EnterState(EEnemyAlert::Chase);
+		return;
+	}
+	if (CheckForBodies())
+	{
 		return;
 	}
 	if (FVector::Dist2D(GetEnemy()->GetActorLocation(), HomeLocation) < 150.f)

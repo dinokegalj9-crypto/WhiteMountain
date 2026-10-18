@@ -47,8 +47,10 @@ Neobavezno: *Content Drawer → Add → Add Feature or Content Pack → Third Pe
 | E | uhvati uže; stani na rub stupa za prelazak po užetu; razgovor s majstorom |
 | Q | kaginawa: gledaj sidrište (sivu kuglu na tornju) i baci kuku |
 | R | na rubu litice veži ljestve od užeta; opet R na vrhu ih odvezuje |
+| E iza mirnog stražara | **Silent Sleep** (gušenje straga): 4 s, potpuno tiho |
+| F iza mirnog stražara | **Pressure Strike** (udarac iza uha): 1 s, ali stražar jaukne |
 
-Gamepad radi isto (A skok, B pusti, X uže, Y ljestve, RB kuka).
+Gamepad radi isto (A skok, B pusti, X uže / Silent Sleep, Y ljestve, RB kuka, LB Pressure Strike).
 
 ## 5. Poligon: stanice
 
@@ -78,6 +80,14 @@ Stražar svakih 0,3 s pita navigacijsku mrežu može li doći do tebe. Ako 3,5 s
 
 **Strijelci** (zeleni) gađaju kad te vide na više od 4 m. Kad iznad glave piše **AIM**, strijelac stoji i napinje luk (0,9 s), pa imaš trenutak da se skloniš iza zida ili pobjegneš iz vida. Pogodak ti uzima 20 bodova i 2,5 s usporava trčanje (bez krvi). Šansa za pogodak je 55 % i manja je kad si daleko, sprintaš ili čučiš, a veća kad visiš na zidu ili užetu. Na ruti bijega neuvježbana ruta daje +10 % šanse, a svako uvježbavanje −12 %. Jedan strijelac čuva rutu bijega u gradu.
 
+**Tiha eliminacija.** Prišuljaj se mirnom stražaru s leđa (unutar oko 1,5 m). Na sredini ekrana piše `[E] Silent Sleep [F] Pressure Strike`. Stražar koji te lovi (`!`) ili traži (`?`) pazi na leđa i ne može se srušiti, ali onoga koji leži poskliznut na ulju ili srušen balvanom možeš srušiti s bilo koje strane.
+- **Silent Sleep (E)**: 4 s držiš ga i ne možeš se micati. Potpuno tiho, +40 bodova, spava 60 s.
+- **Pressure Strike (F)**: gotovo za 1 s, ali jaukne. Stražari u krugu od 9 m dolaze vidjeti (`?`). +20 bodova, spava 30 s.
+- Što sporije, to tiše (prijedlog iz bilješke o Bujinkan potezima).
+- Ako te za vrijeme hvata uhvati drugi stražar ili te pogodi strijela, pustiš ga i on te odmah lovi.
+- Onesviješteni stražar ima `zzz` iznad glave. Ako ga drugi stražar vidi, `zzz` požuti i taj stražar ide pretraživati to mjesto. Zato biraj stražara kojeg drugi ne vide.
+- Kad se probudi, pretražuje okolinu. Za takvu pretragu nema bodova bijega jer te nitko nije lovio.
+
 Zamke daju dodatne bodove: stražar koji te lovi i posklizne se na ulju +30, stražar srušen balvanom +50, krađa knjige +50.
 
 Kad te uhvate, gubiš 25 bodova i niz. Bodove trošiš kod **majstora u selu** (E pored njega): odraz od zida 150, ljestve od užeta 250. Kovač i travar postoje u kodu kao vrste majstora, ali još nemaju što naučiti.
@@ -88,6 +98,7 @@ Kad te uhvate, gubiš 25 bodova i niz. Bodove trošiš kod **majstora u selu** (
 - njihanje na kaginawi preko jaza
 - pas još ne prati miris po tlu (samo dulje traži)
 - stražari još ne primjećuju tvoje ljestve
+- skrivanje i vezanje onesviještenih stražara (hojojutsu), eliminacija oštricom
 - neprijateljski shinobi koji može sve
 - spremanje igre, inventar užeta, prava grafika
 
