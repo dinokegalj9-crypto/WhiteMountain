@@ -7,9 +7,10 @@
 class UStaticMeshComponent;
 
 /**
- * Cosmetic arrow: flies in a straight line to where the archer's shot was decided to land,
- * sticks there for a few seconds and disappears. Hit or miss is rolled by the archer, not by physics,
- * so the arrow never collides with anything.
+ * Cosmetic arrow: flies in a straight line to where the archer's shot was decided to land.
+ * Hit or miss is rolled by the archer, not by physics, so the arrow never collides with anything.
+ * At the end it sticks in what it hit (a wall, the ground, the shinobi, following him),
+ * or simply disappears if it flew off into the distance.
  */
 UCLASS()
 class WHITEMOUNTAIN_API AShinobiArrow : public AActor
@@ -21,7 +22,8 @@ public:
 
 	virtual void Tick(float DeltaSeconds) override;
 
-	void Launch(const FVector& From, const FVector& To);
+	/** StickTo: actor to stay attached to on arrival. bStick false = vanish on arrival (flew off into the distance). */
+	void Launch(const FVector& From, const FVector& To, AActor* StickTo, bool bStick);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Arrow")
 	float Speed = 3500.f;
@@ -36,4 +38,7 @@ private:
 	FVector Start = FVector::ZeroVector;
 	FVector End = FVector::ZeroVector;
 	float Travelled = 0.f;
+	bool bStickAtEnd = true;
+	TWeakObjectPtr<AActor> StickTarget;
+	FVector StickOffset = FVector::ZeroVector;	// where on StickTarget the arrow lands
 };

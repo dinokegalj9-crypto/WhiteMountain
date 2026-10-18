@@ -7,6 +7,7 @@
 #include "ShinobiEscapeRoute.h"
 #include "ShinobiTraversalComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationPath.h"
@@ -517,19 +518,35 @@ void AShinobiEnemyController::Shoot()
 	const bool bHit = FMath::FRand() < GetHitChance();
 
 	FVector To = Target;
+	bool bStick = true;
 	if (!bHit)
 	{
-		// Close enough to hear: past him, to one side, into the ground or the wall behind.
+		// Close enough to hear: aim just to one side of him, then fly on past until the arrow
+		// meets a wall or the ground. If it meets nothing it vanishes in the distance.
 		const FVector Dir = (Target - From).GetSafeNormal();
 		const FVector Side = FVector::CrossProduct(Dir, FVector::UpVector).GetSafeNormal();
-		To = Target + Side * FMath::FRandRange(120.f, 220.f) * (FMath::RandBool() ? 1.f : -1.f) + Dir * 250.f - FVector(0.f, 0.f, 60.f);
+		const FVector NearMiss = Target + Side * FMath::FRandRange(80.f, 160.f) * (FMath::RandBool() ? 1.f : -1.f);
+		const FVector Far = From + (NearMiss - From).GetSafeNormal() * Enemy->SightRange * 1.5f;
+
+		FCollisionQueryParams Query(SCENE_QUERY_STAT(ShinobiArrow), false, Enemy);
+		Query.AddIgnoredActor(Player);
+		FHitResult Impact;
+		if (GetWorld()->LineTraceSingleByChannel(Impact, From, Far, ECC_Visibility, Query))
+		{
+			To = Impact.ImpactPoint;
+		}
+		else
+		{
+			To = Far;
+			bStick = false;
+		}
 	}
 
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	if (AShinobiArrow* Arrow = GetWorld()->SpawnActor<AShinobiArrow>(AShinobiArrow::StaticClass(), FTransform(From), Params))
 	{
-		Arrow->Launch(From, To);
+		Arrow->Launch(From, To, bHit ? Player : nullptr, bStick);
 	}
 
 	if (bHit)
