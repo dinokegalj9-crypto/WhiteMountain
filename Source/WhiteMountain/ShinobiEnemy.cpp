@@ -5,6 +5,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "TimerManager.h"
 #include "UObject/ConstructorHelpers.h"
 
 AShinobiEnemy::AShinobiEnemy()
@@ -97,4 +99,39 @@ EEnemyAlert AShinobiEnemy::GetAlert() const
 {
 	const AShinobiEnemyController* AI = Cast<AShinobiEnemyController>(GetController());
 	return AI ? AI->GetAlert() : EEnemyAlert::Patrol;
+}
+
+bool AShinobiEnemy::Slip(float Duration)
+{
+	if (bStunned)
+	{
+		return false;
+	}
+	bStunned = true;
+
+	if (AController* AI = GetController())
+	{
+		AI->StopMovement();
+	}
+	GetCharacterMovement()->StopMovementImmediately();
+	GetCharacterMovement()->MaxWalkSpeed = 0.f;
+
+	// Grey-box "fall": tip the visible body over. The capsule stays upright.
+	BodyRotationBeforeSlip = PlaceholderBody->GetRelativeRotation();
+	MeshRotationBeforeSlip = GetMesh()->GetRelativeRotation();
+	PlaceholderBody->SetRelativeRotation(BodyRotationBeforeSlip + FRotator(0.f, 0.f, 75.f));
+	PlaceholderFace->SetVisibility(false);
+	GetMesh()->SetRelativeRotation(MeshRotationBeforeSlip + FRotator(0.f, 0.f, 75.f));
+
+	GetWorldTimerManager().SetTimer(RecoverTimer, this, &AShinobiEnemy::Recover, Duration, false);
+	return true;
+}
+
+void AShinobiEnemy::Recover()
+{
+	bStunned = false;
+	PlaceholderBody->SetRelativeRotation(BodyRotationBeforeSlip);
+	PlaceholderFace->SetVisibility(PlaceholderBody->IsVisible());
+	GetMesh()->SetRelativeRotation(MeshRotationBeforeSlip);
+	GetCharacterMovement()->MaxWalkSpeed = GetAlert() == EEnemyAlert::Patrol || GetAlert() == EEnemyAlert::Return ? PatrolSpeed : ChaseSpeed;
 }

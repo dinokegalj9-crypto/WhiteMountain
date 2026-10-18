@@ -36,6 +36,9 @@ public:
 
 	EEnemyAlert GetAlert() const { return Alert; }
 
+	/** Someone shouted: run to Location and start chasing, even without seeing the shinobi. */
+	void RaiseAlarm(const FVector& Location);
+
 	UPROPERTY(EditAnywhere, Category = "Guard|Pursuit")
 	float RepathInterval = 0.3f;
 

@@ -15,7 +15,8 @@ class AShinobiEnemy;
  * a tightrope, a village master and guards when play starts.
  *
  * Stations: 0 vault crate, 1 climbing wall, 2 ledge wall, 3 kaginawa tower, 4 rope wall,
- * 5 cliff for rope ladders (with a long ramp guards can use), 6 tightrope between pillars.
+ * 5 cliff for rope ladders (with a long ramp guards can use), 6 tightrope between pillars,
+ * 7 town escape (ledger to steal, escape route with oil and a log to push down).
  */
 UCLASS()
 class WHITEMOUNTAIN_API ATraversalTestCourse : public AActor
@@ -51,6 +52,9 @@ private:
 
 	template <typename T>
 	T* SpawnLocal(const FVector& LocalLocation, const FRotator& LocalRotation);
+
+	template <typename T>
+	T* SpawnLocalWith(const FVector& LocalLocation, const FRotator& LocalRotation, TFunctionRef<void(T*)> Setup);
 
 	UPROPERTY(VisibleAnywhere, Category = "Course")
 	TObjectPtr<USceneComponent> Root;

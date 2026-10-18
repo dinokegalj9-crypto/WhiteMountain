@@ -60,6 +60,10 @@ Gamepad radi isto (A skok, B pusti, X uže, Y ljestve, RB kuka).
 5. **Litica s rampom**: stražari mogu gore dugom rampom. Ti siđeš ljestvama. Ljestve treba prvo kupiti kod majstora.
 6. **Prelazak po užetu**: penji se na drveni stup, E na rubu, W naprijed, A/D za ravnotežu. Drugi stup je slijepa točka. Skok dolje je 5 m, pa koristi ukemi.
 
+7. **Bijeg iz grada** (iza drvenog bloka): dvorište sa zidovima, unutra stoji **porezna knjiga** (E da je ukradeš). Kad je uzmeš, svi stražari u gradu dižu uzbunu. Ruta bijega: **stražnja vrata** → **kamenje** s ćupom ulja (E prolije ulje, stražar koji naleti padne na 2,5 s) → **balvan** naslonjen na krov skladišta (stražari se i oni mogu popeti njime) → na krovu E **gurne balvan dolje**: tko je ispod padne, a gore više nitko ne može → **drugi kraj krova**. Skok dolje je 4,5 m, pa koristi ukemi. Ulje se osuši nakon 40 s, balvan se vrati gore kad odeš.
+
+   **Uvježbavanje rute:** pretrči rutu mirno, dok te nitko ne lovi, i to se broji kao uvježbavanje (do 3 puta). Svjetleća kugla pokazuje sljedeću točku. Pravi bijeg rutom donosi 150 bodova × (1 + 0,5 po uvježbavanju), dakle do 375. Ako rutu nisi uvježbao, u bijegu ti kugle **ne pokazuju** put.
+
 Stražari: **kopljanik** (crveni), **samuraj** (tamni, spor), **pas** (nizak, brz, dugo prati trag), **strijelac** (zeleni, daleko vidi). Iznad glave: `!` lovi te, `?` traži, `...` stoji ispod tebe i ne može gore.
 
 ## 6. Kako rade bodovi bijega
@@ -71,6 +75,8 @@ Stražar svakih 0,3 s pita navigacijsku mrežu može li doći do tebe. Ako 3,5 s
 - \+ 40 za svaku različitu kretnju u zadnjih 12 s (penjanje, rub, uže, kuka...)
 - × tip stražara (kopljanik 1, strijelac 1,3, samuraj 1,5, pas 2)
 - × niz: bijeg unutar 10 s od prošlog daje ×1,5, ×2... do ×3
+
+Zamke daju dodatne bodove: stražar koji te lovi i posklizne se na ulju +30, stražar srušen balvanom +50, krađa knjige +50.
 
 Kad te uhvate, gubiš 25 bodova i niz. Bodove trošiš kod **majstora u selu** (E pored njega): odraz od zida 150, ljestve od užeta 250. Kovač i travar postoje u kodu kao vrste majstora, ali još nemaju što naučiti.
 

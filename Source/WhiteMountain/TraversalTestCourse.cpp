@@ -6,6 +6,10 @@
 #include "ShinobiTightrope.h"
 #include "ShinobiTrainer.h"
 #include "ShinobiEnemy.h"
+#include "ShinobiEscapeRoute.h"
+#include "ShinobiOilTrap.h"
+#include "ShinobiDropLog.h"
+#include "ShinobiAlarmObjective.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Engine/CollisionProfile.h"
@@ -32,6 +36,23 @@ T* ATraversalTestCourse::SpawnLocal(const FVector& LocalLocation, const FRotator
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	return GetWorld()->SpawnActor<T>(T::StaticClass(), World, Params);
+}
+
+template <typename T>
+T* ATraversalTestCourse::SpawnLocalWith(const FVector& LocalLocation, const FRotator& LocalRotation, TFunctionRef<void(T*)> Setup)
+{
+	// Deferred so Setup runs before the actor's construction script and BeginPlay.
+	const FTransform World = FTransform(LocalRotation, LocalLocation) * GetActorTransform();
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Params.bDeferConstruction = true;
+	T* Actor = GetWorld()->SpawnActor<T>(T::StaticClass(), World, Params);
+	if (Actor)
+	{
+		Setup(Actor);
+		UGameplayStatics::FinishSpawningActor(Actor, World);
+	}
+	return Actor;
 }
 
 ATraversalTestCourse::ATraversalTestCourse()
@@ -102,6 +123,20 @@ void ATraversalTestCourse::OnConstruction(const FTransform& Transform)
 	AddLabel(TEXT("Label6"), FVector(-1800.f, 2600.f, 650.f), TEXT("6. TIGHTROPE  (E at the pillar edge)"));
 
 	AddLabel(TEXT("LabelMaster"), FVector(-900.f, -400.f, 280.f), TEXT("Spend escape points with the village master"));
+
+	// 7. Town escape: walled courtyard with the magistrate's ledger, a back gate, an oil jar on
+	// the stones and a log leaned against a storehouse roof (the log itself is spawned at play).
+	const float WallHeight = 400.f;
+	const float WallZ = WallHeight * 0.5f;
+	AddBlock(TEXT("TownWallW1"), FVector(3400.f, -450.f, WallZ), FVector(60.f, 500.f, WallHeight), Flat, PlainColor, NoClimbTag);
+	AddBlock(TEXT("TownWallW2"), FVector(3400.f, 450.f, WallZ), FVector(60.f, 500.f, WallHeight), Flat, PlainColor, NoClimbTag);
+	AddBlock(TEXT("TownWallE"), FVector(4400.f, 0.f, WallZ), FVector(60.f, 1460.f, WallHeight), Flat, PlainColor, NoClimbTag);
+	AddBlock(TEXT("TownWallS"), FVector(3900.f, -700.f, WallZ), FVector(1060.f, 60.f, WallHeight), Flat, PlainColor, NoClimbTag);
+	AddBlock(TEXT("TownWallN1"), FVector(3675.f, 700.f, WallZ), FVector(550.f, 60.f, WallHeight), Flat, PlainColor, NoClimbTag);
+	AddBlock(TEXT("TownWallN2"), FVector(4325.f, 700.f, WallZ), FVector(150.f, 60.f, WallHeight), Flat, PlainColor, NoClimbTag);
+	AddBlock(TEXT("Storehouse"), FVector(4100.f, 2300.f, 225.f), FVector(800.f, 600.f, 450.f), Flat, PlainColor, NoClimbTag);
+	AddLabel(TEXT("Label7"), FVector(3250.f, 0.f, 480.f), TEXT("7. TOWN ESCAPE  (steal the ledger, run the route)"));
+	AddLabel(TEXT("Label7b"), FVector(3250.f, 0.f, 430.f), TEXT("Rehearse it calmly first: rehearsed escapes pay more"));
 }
 
 void ATraversalTestCourse::BeginPlay()
@@ -127,12 +162,39 @@ void ATraversalTestCourse::BeginPlay()
 	// Village master (hunter: climbing and ropes).
 	SpawnLocal<AShinobiTrainer>(FVector(-900.f, -400.f, 0.f), FRotator(0.f, 180.f, 0.f));
 
+	// Station 7: the escape route out of the town and its two traps.
+	SpawnLocalWith<AShinobiEscapeRoute>(FVector::ZeroVector, FRotator::ZeroRotator, [](AShinobiEscapeRoute* Route)
+	{
+		Route->RouteName = TEXT("Storehouse roof");
+		Route->Checkpoints = {
+			FVector(4100.f, 780.f, 0.f),	// back gate
+			FVector(4100.f, 1100.f, 0.f),	// oiled stones
+			FVector(4100.f, 1350.f, 0.f),	// foot of the log
+			FVector(4100.f, 2450.f, 450.f)	// far side of the storehouse roof
+		};
+	});
+	SpawnLocalWith<AShinobiOilTrap>(FVector(3850.f, 1000.f, 0.f), FRotator::ZeroRotator, [](AShinobiOilTrap* Oil)
+	{
+		Oil->SlickOffset = FVector(250.f, 100.f, 0.f);
+		Oil->SlickSize = FVector2D(400.f, 300.f);
+	});
+	SpawnLocalWith<AShinobiDropLog>(FVector(4100.f, 1300.f, 0.f), FRotator::ZeroRotator, [](AShinobiDropLog* Log)
+	{
+		Log->TopPoint = FVector(0.f, 700.f, 450.f);
+	});
+	SpawnLocal<AShinobiAlarmObjective>(FVector(4200.f, -450.f, 0.f), FRotator::ZeroRotator);
+
 	if (bSpawnGuards && GuardClass)
 	{
 		SpawnGuard(EGuardType::Spearman, FVector(700.f, 700.f, 100.f));
 		SpawnGuard(EGuardType::Samurai, FVector(700.f, -700.f, 100.f));
 		SpawnGuard(EGuardType::Dog, FVector(-1500.f, 700.f, 60.f));
 		SpawnGuard(EGuardType::Archer, FVector(-1200.f, -1300.f, 100.f));
+
+		// Town guards.
+		SpawnGuard(EGuardType::Spearman, FVector(3800.f, -300.f, 100.f));
+		SpawnGuard(EGuardType::Spearman, FVector(4000.f, 300.f, 100.f));
+		SpawnGuard(EGuardType::Samurai, FVector(3200.f, 0.f, 100.f));
 	}
 
 	if (bMovePlayerToStart)

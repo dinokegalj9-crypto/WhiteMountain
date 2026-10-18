@@ -14,7 +14,7 @@ namespace
 	{
 		TEXT("WASD move   Mouse camera   Shift sprint   C crouch / let go / ukemi"),
 		TEXT("Space jump / climb a marked wall / vault / wall jump"),
-		TEXT("E rope, tightrope, master   Q kaginawa (look at an anchor)"),
+		TEXT("E rope, tightrope, master, oil jar, push log, steal   Q kaginawa (look at an anchor)"),
 		TEXT("R rope ladder at an edge (R again at the top = untie)"),
 	};
 }

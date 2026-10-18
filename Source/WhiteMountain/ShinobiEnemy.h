@@ -26,6 +26,11 @@ public:
 
 	EEnemyAlert GetAlert() const;
 
+	/** Knocked off his feet (oil, a falling log). Does nothing if he is already down. Returns true if he fell. */
+	bool Slip(float Duration);
+
+	bool IsStunned() const { return bStunned; }
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard")
 	EGuardType GuardType = EGuardType::Spearman;
 
@@ -73,4 +78,12 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category = "Guard")
 	TObjectPtr<UStaticMeshComponent> PlaceholderFace;
+
+private:
+	void Recover();
+
+	bool bStunned = false;
+	FRotator BodyRotationBeforeSlip = FRotator::ZeroRotator;
+	FRotator MeshRotationBeforeSlip = FRotator::ZeroRotator;
+	FTimerHandle RecoverTimer;
 };
