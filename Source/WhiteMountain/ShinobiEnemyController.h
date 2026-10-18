@@ -39,6 +39,15 @@ public:
 	/** Someone shouted: run to Location and start chasing, even without seeing the shinobi. */
 	void RaiseAlarm(const FVector& Location);
 
+	bool IsAiming() const { return bAiming; }
+
+	/**
+	 * How likely an arrow from this guard hits the shinobi right now (0..1).
+	 * Far, sprinting or crouched is harder; climbing or hanging is easier.
+	 * On an escape route: unrehearsed is easier to hit, each rehearsal makes it harder.
+	 */
+	float GetHitChance() const;
+
 	UPROPERTY(EditAnywhere, Category = "Guard|Pursuit")
 	float RepathInterval = 0.3f;
 
@@ -80,6 +89,10 @@ private:
 	void FaceTowards(const FVector& Location, float DeltaSeconds);
 	void TryCatch();
 
+	/** Archer aiming and shooting. Returns true while he stands still to aim. */
+	bool TickBow(float DeltaSeconds, bool bSees);
+	void Shoot();
+
 	AShinobiEnemy* GetEnemy() const;
 	APawn* GetPlayer() const;
 	UEscapeScoreComponent* GetPlayerScore() const;
@@ -95,4 +108,7 @@ private:
 	float RepathTimer = 0.f;
 	float WaitTimer = 0.f;
 	float CatchTimer = 0.f;
+	bool bAiming = false;
+	float AimTimer = 0.f;
+	float ShotTimer = 0.f;
 };

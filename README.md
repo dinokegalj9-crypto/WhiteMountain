@@ -16,6 +16,7 @@ UE5 C++ prototype of shinobi traversal and escape scoring. Untested: written wit
 | `ShinobiEscapeRoute` | ordered checkpoints; calm runs are rehearsals (max 3), chased runs pay a bonus scaled by rehearsals |
 | `ShinobiOilTrap` / `ShinobiDropLog` | escape traps: oil that knocks chasing guards down; a log ramp pushed down from the roof, which removes the guards' navmesh route |
 | `ShinobiAlarmObjective` | item to steal; raises the alarm for nearby guards |
+| `ShinobiArrow` | cosmetic arrow; archers (`ShinobiEnemyController::TickBow`) aim, then roll hit chance (distance, sprint, crouch, traversal, route rehearsal) |
 | `ShinobiHUD` | Canvas HUD, no UMG needed |
 | `TraversalTestCourse` | grey-box course with 8 stations (7 = town escape), guards, ropes and a master |
 

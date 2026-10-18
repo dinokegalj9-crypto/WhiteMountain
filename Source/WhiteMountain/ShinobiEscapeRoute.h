@@ -31,6 +31,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Route")
 	int32 GetRehearsals() const { return Rehearsals; }
 
+	bool IsRunning() const { return NextIndex > 0; }
+
+	/** The route the shinobi is running right now, if any. */
+	static const AShinobiEscapeRoute* FindRunningRoute(const UWorld* World);
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Route")
 	FString RouteName = TEXT("Storehouse roof");
 

@@ -195,6 +195,7 @@ void ATraversalTestCourse::BeginPlay()
 		SpawnGuard(EGuardType::Spearman, FVector(3800.f, -300.f, 100.f));
 		SpawnGuard(EGuardType::Spearman, FVector(4000.f, 300.f, 100.f));
 		SpawnGuard(EGuardType::Samurai, FVector(3200.f, 0.f, 100.f));
+		SpawnGuard(EGuardType::Archer, FVector(3500.f, 1500.f, 100.f));	// covers the escape route
 	}
 
 	if (bMovePlayerToStart)

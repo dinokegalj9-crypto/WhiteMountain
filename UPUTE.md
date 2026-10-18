@@ -76,6 +76,8 @@ Stražar svakih 0,3 s pita navigacijsku mrežu može li doći do tebe. Ako 3,5 s
 - × tip stražara (kopljanik 1, strijelac 1,3, samuraj 1,5, pas 2)
 - × niz: bijeg unutar 10 s od prošlog daje ×1,5, ×2... do ×3
 
+**Strijelci** (zeleni) gađaju kad te vide na više od 4 m. Kad iznad glave piše **AIM**, strijelac stoji i napinje luk (0,9 s), pa imaš trenutak da se skloniš iza zida ili pobjegneš iz vida. Pogodak ti uzima 20 bodova i 2,5 s usporava trčanje (bez krvi). Šansa za pogodak je 55 % i manja je kad si daleko, sprintaš ili čučiš, a veća kad visiš na zidu ili užetu. Na ruti bijega neuvježbana ruta daje +10 % šanse, a svako uvježbavanje −12 %. Jedan strijelac čuva rutu bijega u gradu.
+
 Zamke daju dodatne bodove: stražar koji te lovi i posklizne se na ulju +30, stražar srušen balvanom +50, krađa knjige +50.
 
 Kad te uhvate, gubiš 25 bodova i niz. Bodove trošiš kod **majstora u selu** (E pored njega): odraz od zida 150, ljestve od užeta 250. Kovač i travar postoje u kodu kao vrste majstora, ali još nemaju što naučiti.
@@ -84,7 +86,7 @@ Kad te uhvate, gubiš 25 bodova i niz. Bodove trošiš kod **majstora u selu** (
 
 - animacije (penjanje, visenje, kolut) i Motion Warping
 - njihanje na kaginawi preko jaza
-- strijelac još ne gađa, pas još ne prati miris po tlu (samo dulje traži)
+- pas još ne prati miris po tlu (samo dulje traži)
 - stražari još ne primjećuju tvoje ljestve
 - neprijateljski shinobi koji može sve
 - spremanje igre, inventar užeta, prava grafika

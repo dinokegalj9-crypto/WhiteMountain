@@ -120,6 +120,11 @@ void AShinobiHUD::DrawGuardMarkers()
 		case EEnemyAlert::Frustrated: Symbol = TEXT("...");  Color = FLinearColor(0.6f, 0.6f, 1.f); break;
 		default: break;
 		}
+		if (It->IsAiming())
+		{
+			Symbol = TEXT("AIM");
+			Color = FLinearColor(1.f, 0.45f, 0.f);
+		}
 		if (Symbol)
 		{
 			DrawText(Symbol, Color, Screen.X - 6.f, Screen.Y, MarkerFont, 1.5f);

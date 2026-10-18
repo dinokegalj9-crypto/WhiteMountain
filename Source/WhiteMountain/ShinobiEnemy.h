@@ -65,6 +65,27 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard|Senses")
 	float SearchDuration = 6.f;
 
+	// --- Bow (archers) ---
+	/** Set by GuardType: only archers shoot. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard|Bow")
+	bool bCanShoot = false;
+
+	/** Seconds standing still and aiming before the arrow flies. Watch for "AIM" over his head. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard|Bow")
+	float AimTime = 0.9f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard|Bow")
+	float ShotCooldown = 3.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard|Bow")
+	float MinShootDistance = 400.f;
+
+	/** Chance to hit before distance, movement, cover and route rehearsal are taken into account. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard|Bow")
+	float BaseHitChance = 0.55f;
+
+	bool IsAiming() const;
+
 	/** Escape points from this guard are multiplied by this. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Guard")
 	float EscapePointMultiplier = 1.f;
