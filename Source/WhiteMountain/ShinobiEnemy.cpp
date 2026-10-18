@@ -81,7 +81,7 @@ void AShinobiEnemy::ApplyGuardType()
 		break;
 	case EGuardType::Archer:
 		PatrolSpeed = 170.f; ChaseSpeed = 400.f; LostSightGiveUpTime = 4.f; SearchDuration = 5.f;
-		SightRange = 3000.f;
+		SightRange = 3000.f; bCanShoot = true;
 		EscapePointMultiplier = 1.3f; BodyColor = FLinearColor(0.1f, 0.3f, 0.1f);
 		break;
 	case EGuardType::Dog:
@@ -99,6 +99,12 @@ EEnemyAlert AShinobiEnemy::GetAlert() const
 {
 	const AShinobiEnemyController* AI = Cast<AShinobiEnemyController>(GetController());
 	return AI ? AI->GetAlert() : EEnemyAlert::Patrol;
+}
+
+bool AShinobiEnemy::IsAiming() const
+{
+	const AShinobiEnemyController* AI = Cast<AShinobiEnemyController>(GetController());
+	return AI && AI->IsAiming();
 }
 
 bool AShinobiEnemy::Slip(float Duration)

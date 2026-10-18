@@ -5,6 +5,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/TextRenderComponent.h"
 #include "Engine/StaticMesh.h"
+#include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
 
@@ -64,6 +65,18 @@ void AShinobiEscapeRoute::BeginPlay()
 		MarkerLabels.Add(Label);
 	}
 	UpdateMarkers();
+}
+
+const AShinobiEscapeRoute* AShinobiEscapeRoute::FindRunningRoute(const UWorld* World)
+{
+	for (TActorIterator<AShinobiEscapeRoute> It(World); It; ++It)
+	{
+		if (It->IsRunning())
+		{
+			return *It;
+		}
+	}
+	return nullptr;
 }
 
 FVector AShinobiEscapeRoute::GetCheckpointWorld(int32 Index) const

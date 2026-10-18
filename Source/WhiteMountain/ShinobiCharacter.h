@@ -38,6 +38,21 @@ public:
 	/** Knock the shinobi back (used when a guard catches him). */
 	void ReceiveCatch(const FVector& FromLocation);
 
+	/** An arrow hit: lose points and limp for a moment. No blood, the design doc keeps it low. */
+	void ReceiveArrowHit(const FVector& FromLocation);
+
+	bool IsWounded() const;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Arrows")
+	float ArrowSlowSeconds = 2.5f;
+
+	/** Run and sprint speed are multiplied by this while wounded. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Arrows")
+	float ArrowSlowFactor = 0.55f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Arrows")
+	int32 ArrowHitPenalty = 20;
+
 	// --- Movement tuning ---
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shinobi|Movement")
 	float RunSpeed = 450.f;
@@ -127,6 +142,7 @@ private:
 	void EndStun();
 
 	bool bWantsSprint = false;
+	float WoundedUntil = -1.f;
 	bool bStunned = false;
 	float FallApexZ = 0.f;
 	float LastDropPressTime = -1000.f;

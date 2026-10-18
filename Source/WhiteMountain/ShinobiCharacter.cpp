@@ -108,7 +108,7 @@ void AShinobiCharacter::Tick(float DeltaSeconds)
 	const bool bMoving = MoveComp->IsMovingOnGround() && MoveComp->Velocity.SizeSquared2D() > FMath::Square(100.f);
 	const bool bSprinting = bWantsSprint && bMoving && !bIsCrouched && !Traversal->IsTraversing()
 		&& Traversal->ConsumeSprintStamina(DeltaSeconds);
-	MoveComp->MaxWalkSpeed = bSprinting ? SprintSpeed : RunSpeed;
+	MoveComp->MaxWalkSpeed = (bSprinting ? SprintSpeed : RunSpeed) * (IsWounded() ? ArrowSlowFactor : 1.f);
 }
 
 // ---------------------------------------------------------------------------
@@ -396,6 +396,24 @@ void AShinobiCharacter::ReceiveCatch(const FVector& FromLocation)
 {
 	const FVector Away = (GetActorLocation() - FromLocation).GetSafeNormal2D();
 	LaunchCharacter(Away * 500.f + FVector(0.f, 0.f, 250.f), true, true);
+}
+
+void AShinobiCharacter::ReceiveArrowHit(const FVector& FromLocation)
+{
+	WoundedUntil = GetWorld()->GetTimeSeconds() + ArrowSlowSeconds;
+	EscapeScore->AwardBonus(-ArrowHitPenalty, TEXT("Hit by an arrow!"));
+
+	// A hit on the ground staggers you; on a wall or rope you just hold on.
+	if (!Traversal->IsTraversing() && GetCharacterMovement()->IsMovingOnGround())
+	{
+		const FVector Away = (GetActorLocation() - FromLocation).GetSafeNormal2D();
+		LaunchCharacter(Away * 250.f + FVector(0.f, 0.f, 80.f), true, false);
+	}
+}
+
+bool AShinobiCharacter::IsWounded() const
+{
+	return GetWorld() && GetWorld()->GetTimeSeconds() < WoundedUntil;
 }
 
 void AShinobiCharacter::Stun(float Seconds, const FString& Reason)

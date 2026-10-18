@@ -3,7 +3,11 @@
 #include "ShinobiEnemy.h"
 #include "ShinobiCharacter.h"
 #include "EscapeScoreComponent.h"
+#include "ShinobiArrow.h"
+#include "ShinobiEscapeRoute.h"
+#include "ShinobiTraversalComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationPath.h"
@@ -100,8 +104,10 @@ void AShinobiEnemyController::Tick(float DeltaSeconds)
 	}
 
 	CatchTimer = FMath::Max(0.f, CatchTimer - DeltaSeconds);
+	ShotTimer = FMath::Max(0.f, ShotTimer - DeltaSeconds);
 	if (GetEnemy()->IsStunned())
 	{
+		bAiming = false;
 		return;	// on the ground: no seeing, chasing or catching until he gets up
 	}
 	StateTime += DeltaSeconds;
@@ -170,6 +176,11 @@ void AShinobiEnemyController::TickChase(float DeltaSeconds)
 	else
 	{
 		LostSightTime += DeltaSeconds;
+	}
+
+	if (TickBow(DeltaSeconds, bSees))
+	{
+		return;	// standing still, drawing the bow
 	}
 
 	RepathTimer -= DeltaSeconds;
@@ -251,6 +262,9 @@ void AShinobiEnemyController::TickFrustrated(float DeltaSeconds)
 	{
 		FaceTowards(Player->GetActorLocation(), DeltaSeconds);
 	}
+
+	// He cannot follow you up there, but an archer can still shoot.
+	TickBow(DeltaSeconds, CanSeePlayer());
 
 	// The shinobi came back down within reach: the chase is on again, no points.
 	RepathTimer -= DeltaSeconds;
@@ -408,5 +422,142 @@ void AShinobiEnemyController::TryCatch()
 		{
 			Shinobi->ReceiveCatch(Me->GetActorLocation());
 		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Bow
+// ---------------------------------------------------------------------------
+
+bool AShinobiEnemyController::TickBow(float DeltaSeconds, bool bSees)
+{
+	const AShinobiEnemy* Enemy = GetEnemy();
+	APawn* Player = GetPlayer();
+	if (!Enemy || !Enemy->bCanShoot || !Player)
+	{
+		bAiming = false;
+		return false;
+	}
+
+	if (bAiming)
+	{
+		FaceTowards(Player->GetActorLocation(), DeltaSeconds);
+		AimTimer += DeltaSeconds;
+		if (AimTimer >= Enemy->AimTime)
+		{
+			bAiming = false;
+			ShotTimer = Enemy->ShotCooldown;
+			if (bSees)
+			{
+				Shoot();
+			}
+		}
+		return bAiming;
+	}
+
+	const float Distance = FVector::Dist(Player->GetActorLocation(), Enemy->GetActorLocation());
+	if (bSees && ShotTimer <= 0.f && Distance >= Enemy->MinShootDistance && Distance <= Enemy->SightRange)
+	{
+		bAiming = true;
+		AimTimer = 0.f;
+		StopMovement();
+		return true;
+	}
+	return false;
+}
+
+float AShinobiEnemyController::GetHitChance() const
+{
+	const AShinobiEnemy* Enemy = GetEnemy();
+	const ACharacter* Player = Cast<ACharacter>(GetPlayer());
+	if (!Enemy || !Player)
+	{
+		return 0.f;
+	}
+
+	float Chance = Enemy->BaseHitChance;
+
+	// Past 10 m every extra 10 m costs a third of the chance, down to 30 %.
+	const float Distance = FVector::Dist(Player->GetActorLocation(), Enemy->GetActorLocation());
+	Chance *= FMath::Clamp(1.f - (Distance - 1000.f) / 3000.f, 0.3f, 1.f);
+
+	if (Player->GetVelocity().Size2D() > 550.f)
+	{
+		Chance -= 0.15f;	// sprinting
+	}
+	if (Player->bIsCrouched)
+	{
+		Chance -= 0.1f;
+	}
+	const UShinobiTraversalComponent* Traversal = Player->FindComponentByClass<UShinobiTraversalComponent>();
+	if (Traversal && Traversal->IsTraversing())
+	{
+		Chance += 0.1f;		// flat against a wall or on a rope: an easy target
+	}
+
+	// Father's rule: unrehearsed routes get you shot, rehearsed ones keep you in cover.
+	if (const AShinobiEscapeRoute* Route = AShinobiEscapeRoute::FindRunningRoute(GetWorld()))
+	{
+		Chance += Route->GetRehearsals() == 0 ? 0.1f : -0.12f * Route->GetRehearsals();
+	}
+
+	return FMath::Clamp(Chance, 0.05f, 0.9f);
+}
+
+void AShinobiEnemyController::Shoot()
+{
+	AShinobiEnemy* Enemy = GetEnemy();
+	APawn* Player = GetPlayer();
+	if (!Enemy || !Player)
+	{
+		return;
+	}
+
+	const FVector From = Enemy->GetActorLocation() + FVector(0.f, 0.f, 60.f);
+	const FVector Target = Player->GetActorLocation() + FVector(0.f, 0.f, 20.f);
+	const bool bHit = FMath::FRand() < GetHitChance();
+
+	FVector To = Target;
+	bool bStick = true;
+	if (!bHit)
+	{
+		// Close enough to hear: aim just to one side of him, then fly on past until the arrow
+		// meets a wall or the ground. If it meets nothing it vanishes in the distance.
+		const FVector Dir = (Target - From).GetSafeNormal();
+		const FVector Side = FVector::CrossProduct(Dir, FVector::UpVector).GetSafeNormal();
+		const FVector NearMiss = Target + Side * FMath::FRandRange(80.f, 160.f) * (FMath::RandBool() ? 1.f : -1.f);
+		const FVector Far = From + (NearMiss - From).GetSafeNormal() * Enemy->SightRange * 1.5f;
+
+		FCollisionQueryParams Query(SCENE_QUERY_STAT(ShinobiArrow), false, Enemy);
+		Query.AddIgnoredActor(Player);
+		FHitResult Impact;
+		if (GetWorld()->LineTraceSingleByChannel(Impact, From, Far, ECC_Visibility, Query))
+		{
+			To = Impact.ImpactPoint;
+		}
+		else
+		{
+			To = Far;
+			bStick = false;
+		}
+	}
+
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	if (AShinobiArrow* Arrow = GetWorld()->SpawnActor<AShinobiArrow>(AShinobiArrow::StaticClass(), FTransform(From), Params))
+	{
+		Arrow->Launch(From, To, bHit ? Player : nullptr, bStick);
+	}
+
+	if (bHit)
+	{
+		if (AShinobiCharacter* Shinobi = Cast<AShinobiCharacter>(Player))
+		{
+			Shinobi->ReceiveArrowHit(Enemy->GetActorLocation());
+		}
+	}
+	else if (UEscapeScoreComponent* Score = GetPlayerScore())
+	{
+		Score->PushMessage(TEXT("An arrow whistles past"));
 	}
 }
